@@ -100,6 +100,14 @@ enum AK8963_mag_range{
   AK8963_16_BIT = 0x01
 };
 
+enum AK8963_mag_mode{
+  AK8963_POWER_DOWN = 0x00,
+  AK8963_SINGLE_MEASUREMENT = 0x01,
+  AK8963_CONTINUOUS_MODE_1 = 0x02,
+  AK8963_CONTINUOUS_MODE_2 = 0x06,
+  AK8963_FUSE_ROM_MODE = 0x0F
+};
+
 struct Vector3f{
   float x = 0;
   float y = 0;
@@ -113,17 +121,18 @@ struct Vector3i{
 };
 
 struct MPU9250_Raw_Data{
-  Vector3i gyro, accel;
+  Vector3i gyro, accel, mag;
   int temp;
 };
 
 struct MPU9250_Scaled_Data{
-  Vector3f gyro,accel;
+  Vector3f gyro,accel, mag;
   float temp;
 };
 
 struct MPU9250_Data{
-  Vector3f gyro, accel, orientation;
+  Vector3f gyro, accel, mag, orientation;
+  float rawHeading;
   float temp;
 };
 
@@ -147,6 +156,10 @@ public:
 private:
   float xOffset = 0, yOffset = 0, zOffset = 0;
   float dX_Offset = 0, dY_Offset = 0, dZ_Offset = 0;
+  float magX_Offset = -35;
+  float magY_Offset = -210;
+  float magZ_Offset = -155;
+  float magX_Scale = 1.09, magY_Scale = 1.0, magZ_Scale = 1.0;
   long timeAtLastRead = 0;
   MPU9250_Raw_Data rawData;
   MPU9250_Scaled_Data scaledData;
@@ -155,12 +168,15 @@ private:
   long tempTime;
   int mpuAddr = MPU9250_ADDR_0;
   void update();
+  void enableBypass();
   void getAllData(MPU9250_Raw_Data *rawData);
   void applyFilter(MPU9250_Scaled_Data *scaleData);
   void scaleData(MPU9250_Raw_Data *raw, MPU9250_Scaled_Data *scaledData);
   void normalizeGyro(MPU9250_Scaled_Data *data, long deltaMicros);
+  float calculateMagScale(int scale);
   float gyroScale = calculateGyroScale(MPU9250_GYRO_RANGE_250_DPS);
   float accelScale = calculateAccelScale(MPU9250_ACCEL_RANGE_2_GPS);
+  float magScale = calculateMagScale(AK8963_16_BIT);
   int initAK8963();
   float scaleTemp(int temp);
   bool checkMPU();
@@ -174,6 +190,7 @@ private:
   void ak8963Write8(int reg, int value);
   void ak8963Write8(int value);
   bool checkAK8963();
+  int ak8963Read16(int reg);
 };
 
 #endif

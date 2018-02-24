@@ -46,7 +46,19 @@ void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
   yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
   runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
   runningData.orientation.y = (runningData.orientation.y + scaleData->gyro.y)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*yAcc;
-  runningData.orientation.z = runningData.gyro.z;
+  float heading = atan2(scaleData->mag.y , scaleData->mag.x) *180.0 / M_PI;
+  if(heading < 0) heading += 360;
+  else if(heading > 360) heading -= 360;
+  runningData.rawHeading = heading;
+  //Serial.println("gyro z:" + String(scaleData->gyro.z));
+  if(runningData.orientation.z >= 270 && heading < 90.0){
+    runningData.orientation.z = heading;
+  }
+
+  else if(runningData.orientation.z < 90 && heading > 270.0){
+    runningData.orientation.z = heading;
+  }
+  runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*heading;
 }
 
 void MPU9250::update(){
@@ -59,6 +71,7 @@ void MPU9250::update(){
   runningData.gyro.x += scaledData.gyro.x;
   runningData.gyro.y += scaledData.gyro.y;
   runningData.gyro.z += scaledData.gyro.z;
+  runningData.mag = scaledData.mag;
   applyFilter(&scaledData);
   timeAtLastRead = tempTime;
 }
@@ -87,6 +100,10 @@ void MPU9250::scaleData(MPU9250_Raw_Data *raw, MPU9250_Scaled_Data *data){
   data->accel.y = raw->accel.y / accelScale;
   data->accel.z = raw->accel.z / accelScale;
   data->temp = scaleTemp(raw->temp);
+  data->mag.x = (raw->mag.x / magScale - magX_Offset) * magX_Scale;
+  data->mag.y = (raw->mag.y / magScale - magY_Offset) * magY_Scale;
+  data->mag.z = (raw->mag.z / magScale - magZ_Offset) * magZ_Scale;
+
 }
 
 float MPU9250::calculateAccelScale(int scale){
@@ -105,6 +122,19 @@ float MPU9250::calculateAccelScale(int scale){
       break;
   }
   return -1;
+}
+
+float MPU9250::calculateMagScale(int scale){
+  switch (scale){
+  // Possible magnetometer scales (and their register bit settings) are:
+  // 14 bit resolution (0) and 16 bit resolution (1)
+    case AK8963_14_BIT:
+          return 10.*4912./8190.; // Proper scale to return milliGauss
+          break;
+    case AK8963_16_BIT:
+          return 10.*4912./32760.0; // Proper scale to return milliGauss
+          break;
+    }
 }
 
 float MPU9250::calculateGyroScale(int scale){
@@ -137,6 +167,14 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   raw->gyro.x = Wire.read() <<8|Wire.read();
   raw->gyro.y = Wire.read() <<8|Wire.read();
   raw->gyro.z = Wire.read() <<8|Wire.read();
+  //check if new mag data avialble
+  if(ak8963Read8(AK8963_STATUS_1) & 0x01){
+    raw->mag.x = ak8963Read16(AK8963_MAG_X_L);
+    raw->mag.y = ak8963Read16(AK8963_MAG_Y_L);
+    raw->mag.z = ak8963Read16(AK8963_MAG_Z_L);
+    ak8963Read8(AK8963_STATUS_2);
+  }
+
 }
 
 int MPU9250::begin(){
@@ -162,28 +200,42 @@ int MPU9250::begin(MPU9250_gyro_range gyroRange, MPU9250_accel_range accelRange)
   if(!checkMPU()){
     return -1;
   }
+
   resetDevice();
   setClockSource(MPU9250_CLOCK_SOURCE_X_GYRO);
   delay(100);
   setAccelRange(accelRange);
   setGyroRange(gyroRange);
+  enableBypass();
+  if(initAK8963() < 0){
+    return -2;
+  }
   //Serial.println(mpuRead8(MPU9250_CONFIG),BIN);
   return 0;
 }
 
 
+void MPU9250::enableBypass(){
+  int value = mpuRead8(MPU9250_INT_PIN_CFG);
+  value &= 0b11111101;
+  value |= 1 << 1;
+  mpuWrite8(MPU9250_INT_PIN_CFG,value);
+}
+
 int MPU9250::initAK8963(){
   if(!checkAK8963()){
     return -1;
   }
+
   ak8963Write8(AK8963_CONTROL_1,0x00);
   delay(10);
-  ak8963Write8(AK8963_STATUS_2,AK8963_16_BIT << 4);
+  ak8963Write8(AK8963_CONTROL_1,AK8963_16_BIT << 4 | AK8963_CONTINUOUS_MODE_2);
   delay(10);
   return 0;
 }
 
 bool MPU9250::checkAK8963(){
+  Serial.println("Mag init: Who am I: " + String(ak8963Read8(AK8963_WHO_AM_I)));
   if(ak8963Read8(AK8963_WHO_AM_I) != AK8963_WHO_AM_I_RESPONSE){
     return false;
   }
@@ -193,9 +245,6 @@ bool MPU9250::checkAK8963(){
 void MPU9250::setClockSource(MPU9250_clock_source source){
   mpuWrite8(MPU9250_PWR_MGMT_1,source);
 }
-
-
-
 
 void MPU9250::setAccelRange(MPU9250_accel_range range){
     int value = mpuRead8(MPU9250_ACCEL_CONFIG);
@@ -275,8 +324,21 @@ int MPU9250::mpuRead16(int regLow){
 
 int MPU9250::ak8963Read8(int reg){
   ak8963Write8(reg);
+  Wire.requestFrom(AK8963_ADDR,1);
   if(Wire.available() >= 1){
     return Wire.read();
+  }
+  return -1;
+}
+
+int MPU9250::ak8963Read16(int reg){
+  int valueL,valueH;
+  ak8963Write8(reg);
+  Wire.requestFrom(AK8963_ADDR,2);
+  if(Wire.available() >= 2){
+    valueL = Wire.read();
+    valueH = Wire.read();
+    return valueH << 8 | valueL;
   }
   return -1;
 }
