@@ -44,6 +44,7 @@ void MPU9250::getData(MPU9250_Data *data){
 void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
   xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
   yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
+
   runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
   runningData.orientation.y = (runningData.orientation.y + scaleData->gyro.y)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*yAcc;
   float heading = atan2(scaleData->mag.y , scaleData->mag.x) *180.0 / M_PI;
@@ -188,6 +189,7 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
       break;
 
     case MPU9250_ORIENTATION_X_DOWN:
+    //TODO cover
       raw->gyro.z = preRotated.gyro.x;
       raw->gyro.x = preRotated.gyro.y;
       raw->gyro.y = preRotated.gyro.z;
