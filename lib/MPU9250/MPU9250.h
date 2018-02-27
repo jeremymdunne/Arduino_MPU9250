@@ -137,6 +137,16 @@ struct MPU9250_Data{
 };
 
 
+enum MPU9250_orientation{ //these reference the pull of gravity
+  MPU9250_ORIENTATION_Z_DOWN,
+  MPU9250_ORIENTATION_Z_UP,
+  MPU9250_ORIENTATION_Y_DOWN,
+  MPU9250_ORIENTATION_Y_UP,
+  MPU9250_ORIENTATION_X_DOWN,
+  MPU9250_ORIENTATION_x_UP,
+};
+
+
 class MPU9250{
 public:
   int begin();
@@ -154,6 +164,7 @@ public:
   void getRawData(MPU9250_Raw_Data * data);
 
 private:
+  MPU9250_orientation mpuOrientation = MPU9250_ORIENTATION_X_DOWN;
   float xOffset = 0, yOffset = 0, zOffset = 0;
   float dX_Offset = 0, dY_Offset = 0, dZ_Offset = 0;
   float magX_Offset = -35;
@@ -162,6 +173,7 @@ private:
   float magX_Scale = 1.09, magY_Scale = 1.0, magZ_Scale = 1.0;
   long timeAtLastRead = 0;
   MPU9250_Raw_Data rawData;
+  MPU9250_Raw_Data preRotated;
   MPU9250_Scaled_Data scaledData;
   MPU9250_Data runningData;
   float xAcc, yAcc;

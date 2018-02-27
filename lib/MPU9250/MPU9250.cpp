@@ -160,6 +160,54 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   //Serial.println(mpuRead16(MPU9250_ACCEL_XOUT_H));
   mpuWrite8(MPU9250_ACCEL_XOUT_H);
   Wire.requestFrom(mpuAddr,14,true);
+  preRotated.accel.x = Wire.read()<<8|Wire.read();
+  preRotated.accel.y = Wire.read() <<8|Wire.read();
+  preRotated.accel.z = Wire.read() <<8|Wire.read();
+  raw->temp = Wire.read() <<8|Wire.read();
+  preRotated.gyro.x = Wire.read() <<8|Wire.read();
+  preRotated.gyro.y = Wire.read() <<8|Wire.read();
+  preRotated.gyro.z = Wire.read() <<8|Wire.read();
+  //check if new mag data avialble
+  if(ak8963Read8(AK8963_STATUS_1) & 0x01){
+    preRotated.mag.x = ak8963Read16(AK8963_MAG_X_L);
+    preRotated.mag.y = ak8963Read16(AK8963_MAG_Y_L);
+    preRotated.mag.z = ak8963Read16(AK8963_MAG_Z_L);
+    ak8963Read8(AK8963_STATUS_2);
+  }
+  switch (mpuOrientation){
+    case MPU9250_ORIENTATION_Z_DOWN:
+      *raw = preRotated;
+      break;
+    case MPU9250_ORIENTATION_Z_UP:
+      *raw = preRotated;
+      raw->gyro.z *= -1;
+      raw->accel.z *= -1;
+      raw->gyro.y *= -1;
+      raw->gyro.x *= -1;
+      raw->mag.z *= -1;
+      break;
+
+    case MPU9250_ORIENTATION_X_DOWN:
+      raw->gyro.z = preRotated.gyro.x;
+      raw->gyro.x = preRotated.gyro.y;
+      raw->gyro.y = preRotated.gyro.z;
+      raw->accel.z = preRotated.accel.x;
+      raw->accel.x = preRotated.accel.y;
+      raw->accel.y = preRotated.accel.z;
+      raw->mag.z = preRotated.mag.x;
+      raw->mag.x = preRotated.mag.y;
+      raw->mag.y = preRotated.mag.z;
+      break;
+    default:
+        break;
+  }
+}
+
+/*
+void MPU9250::getAllData(MPU9250_Raw_Data *raw){
+  //Serial.println(mpuRead16(MPU9250_ACCEL_XOUT_H));
+  mpuWrite8(MPU9250_ACCEL_XOUT_H);
+  Wire.requestFrom(mpuAddr,14,true);
   raw->accel.x = Wire.read()<<8|Wire.read();
   raw->accel.y = Wire.read() <<8|Wire.read();
   raw->accel.z = Wire.read() <<8|Wire.read();
@@ -174,9 +222,9 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
     raw->mag.z = ak8963Read16(AK8963_MAG_Z_L);
     ak8963Read8(AK8963_STATUS_2);
   }
-
 }
 
+*/
 int MPU9250::begin(){
   Wire.begin();
   if(!checkMPU()){
