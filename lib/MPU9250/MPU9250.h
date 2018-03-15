@@ -147,6 +147,7 @@ enum MPU9250_orientation{ //these reference the pull of gravity
 };
 
 
+
 class MPU9250{
 public:
   int begin();
@@ -164,7 +165,7 @@ public:
   void getRawData(MPU9250_Raw_Data * data);
 
 private:
-  MPU9250_orientation mpuOrientation = MPU9250_ORIENTATION_X_DOWN;
+  MPU9250_orientation mpuOrientation = MPU9250_ORIENTATION_Z_DOWN;
   float xOffset = 0, yOffset = 0, zOffset = 0;
   float dX_Offset = 0, dY_Offset = 0, dZ_Offset = 0;
   float magX_Offset = -35;

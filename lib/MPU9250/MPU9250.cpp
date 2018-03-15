@@ -160,14 +160,21 @@ float MPU9250::calculateGyroScale(int scale){
 void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   //Serial.println(mpuRead16(MPU9250_ACCEL_XOUT_H));
   mpuWrite8(MPU9250_ACCEL_XOUT_H);
-  Wire.requestFrom(mpuAddr,14,true);
-  preRotated.accel.x = Wire.read()<<8|Wire.read();
-  preRotated.accel.y = Wire.read() <<8|Wire.read();
-  preRotated.accel.z = Wire.read() <<8|Wire.read();
+  #ifdef STM32_SERIES_F1
+    Wire.requestFrom(mpuAddr,14);
+  #else
+    Wire.requestFrom(mpuAddr,14,true);
+  #endif
+  preRotated.accel.x = (int16_t) (Wire.read()<<8|Wire.read());
+  preRotated.accel.y = (int16_t) (Wire.read() <<8|Wire.read());
+  preRotated.accel.z = (int16_t) (Wire.read() <<8|Wire.read());
   raw->temp = Wire.read() <<8|Wire.read();
-  preRotated.gyro.x = Wire.read() <<8|Wire.read();
-  preRotated.gyro.y = Wire.read() <<8|Wire.read();
-  preRotated.gyro.z = Wire.read() <<8|Wire.read();
+  preRotated.gyro.x = (int16_t) (Wire.read()<< 8| Wire.read());
+  //Serial.println("Raw X: " + String(preRotated.gyro.x));
+  //preRotated.gyro.x = (int)(int16_t) preRotated.gyro.x << 8|(int16_t) Wire.read();
+  //Serial.println("Raw X: " + String(preRotated.gyro.x));
+  preRotated.gyro.y = (int16_t)(Wire.read() <<8|Wire.read());
+  preRotated.gyro.z = (int16_t)(Wire.read() <<8|Wire.read());
   //check if new mag data avialble
   if(ak8963Read8(AK8963_STATUS_1) & 0x01){
     preRotated.mag.x = ak8963Read16(AK8963_MAG_X_L);
@@ -369,7 +376,7 @@ int MPU9250::mpuRead16(int regLow){
     value = value << 8;
     value |= Wire.read();
   }
-  return value;
+  return (int)(int16_t)value;
 }
 
 int MPU9250::ak8963Read8(int reg){
@@ -382,13 +389,13 @@ int MPU9250::ak8963Read8(int reg){
 }
 
 int MPU9250::ak8963Read16(int reg){
-  int valueL,valueH;
+  int16_t valueL,valueH;
   ak8963Write8(reg);
   Wire.requestFrom(AK8963_ADDR,2);
   if(Wire.available() >= 2){
     valueL = Wire.read();
     valueH = Wire.read();
-    return valueH << 8 | valueL;
+    return (int)(int16_t)(valueH << 8 | valueL);
   }
   return -1;
 }
