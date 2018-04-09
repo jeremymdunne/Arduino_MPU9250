@@ -5,28 +5,142 @@ void MPU9250::getRawData(MPU9250_Raw_Data * data){
   getAllData(data);
 }
 
-void MPU9250::zero(){
+
+void MPU9250::getGyroCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset){
+  *xOffset = gyroCalibrationOffsets[0];
+  *yOffset = gyroCalibrationOffsets[1];
+  *zOffset = gyroCalibrationOffsets[2];
+}
+
+void MPU9250::getAccelCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset){
+  *xOffset = accelCalibrationOffsets[0];
+  *yOffset = accelCalibrationOffsets[1];
+  *zOffset = accelCalibrationOffsets[2];
+}
+
+void MPU9250::getAccelCalibrationScales(float *xScale, float *yScale, float *zScale){
+  *xScale = accelCalibrationScales[0];
+  *yScale = accelCalibrationScales[1];
+  *zScale = accelCalibrationScales[2];
+}
+
+void MPU9250::getMagnetometerCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset){
+  *xOffset = magnetometerCalibrationOffsets[0];
+  *yOffset = magnetometerCalibrationOffsets[1];
+  *zOffset = magnetometerCalibrationOffsets[2];
+}
+
+void MPU9250::getMagnetometerCalibrationScales(float *xScale, float *yScale, float *zScale){
+  *xScale = magnetometerCalibrationScales[0];
+  *yScale = magnetometerCalibrationScales[1];
+  *zScale = magnetometerCalibrationScales[2];
+}
+
+void MPU9250::calibrateGyroOffsets(){
+  for(int i = 0; i < 3; i ++){
+    gyroCalibrationOffsets[i] = 0;
+  }
+  MPU9250_Data startData;
+  MPU9250_Data endData;
+  for(int i = 0; i < 5; i ++){
+    update();
+  }
+  getData(&startData);
   long startMillis = millis();
-  for(int i = 0; i < 100; i ++){
+  for(int i = 0; i < 20; i ++){
     update();
     delay(5);
   }
+  getData(&endData);
   long endMillis = millis();
-  dX_Offset = runningData.gyro.x / ((endMillis - startMillis)/1000.0);
-  dY_Offset = runningData.gyro.y / ((endMillis - startMillis)/1000.0);
-  dZ_Offset = runningData.gyro.z / ((endMillis - startMillis)/1000.0);
-  //clear previous values
-
-  //startMillis = millis();
-  for(int i = 0; i < 50; i ++){
-    update();
-  }
-  //endMillis = millis();
-  xOffset = runningData.orientation.x;
-  yOffset = runningData.orientation.y;
-  //z can't be fixed
+  gyroCalibrationOffsets[0] = (endData.gyro.x - startData.gyro.x)/((endMillis - startMillis)/1000.0);
+  gyroCalibrationOffsets[1] = (endData.gyro.y - startData.gyro.y)/((endMillis - startMillis)/1000.0);
+  gyroCalibrationOffsets[2] = (endData.gyro.z - startData.gyro.z)/((endMillis - startMillis)/1000.0);
 }
 
+void MPU9250::calibrateAccel(){
+  for(int i = 0; i < 3; i ++){
+    accelCalibrationOffsets[i] = 0;
+    accelCalibrationScales[i] = 0;
+  }
+  float accelMins[3] = {0,0,0};
+  float accelMaxs[3] = {0,0,0};
+  MPU9250_Data data;
+  Serial.println("Slowly rotate the device for 120 seconds! SLOWLY!!!");
+  long startMillis = millis();
+  while((long)(millis() - 120000) < startMillis){
+    if((120000 - startMillis) % 10000 < 100){
+      Serial.println(String((120000 - startMillis) / 1000) + " Seconds left!");
+    }
+    getData(&data);
+    if(data.accel.x < accelMins[0]){
+      accelMins[0] = data.accel.x;
+    }
+    else if(data.accel.x > accelMaxs[0]){
+      accelMaxs[0] = data.accel.x;
+    }
+    if(data.accel.y < accelMins[1]){
+      accelMins[1] = data.accel.y;
+    }
+    else if(data.accel.y > accelMaxs[1]){
+      accelMaxs[1] = data.accel.y;
+    }
+    if(data.accel.z < accelMins[2]){
+      accelMins[2] = data.accel.z;
+    }
+    else if(data.accel.z > accelMaxs[2]){
+      accelMaxs[2] = data.accel.z;
+    }
+    delay(100);
+  }
+
+  //determine offsets
+  for(int i = 0; i < 3; i ++){
+    accelCalibrationOffsets[i] = (accelMins[i] - accelMaxs[i])/2;
+    accelCalibrationScales[i] = 1.0 / (accelMaxs[i] - accelCalibrationOffsets[0]);
+  }
+}
+
+void MPU9250::zero(){
+  MPU9250_Data data;
+  for(int i = 0; i < 5; i ++){
+    update();
+  }
+  getData(&data);
+  orientationOffsets[0] = data.orientation.x;
+  orientationOffsets[0] = data.orientation.y;
+  orientationOffsets[0] = data.orientation.z;
+}
+
+void MPU9250::setGyroCalibrationOffsets(float xOffset, float yOffset, float zOffset){
+  gyroCalibrationOffsets[0] = xOffset;
+  gyroCalibrationOffsets[1] = yOffset;
+  gyroCalibrationOffsets[2] = zOffset;
+}
+
+void MPU9250::setAccelCalibrationOffsets(float xOffset, float yOffset, float zOffset){
+  accelCalibrationOffsets[0] = xOffset;
+  accelCalibrationOffsets[1] = yOffset;
+  accelCalibrationOffsets[2] = zOffset;
+}
+
+void MPU9250::setAccelCalibrationScales(float xScale, float yScale, float zScale){
+  accelCalibrationScales[0] = xScale;
+  accelCalibrationScales[1] = yScale;
+  accelCalibrationScales[2] = zScale;
+}
+
+void MPU9250::setMagnetometerCalibrationOffsets(float xOffset, float yOffset, float zOffset){
+  magnetometerCalibrationOffsets[0] = xOffset;
+  magnetometerCalibrationOffsets[1] = yOffset;
+  magnetometerCalibrationOffsets[2] = zOffset;
+}
+
+void MPU9250::setMagnetometerCalibrationScales(float xScale, float yScale, float zScale){
+  magnetometerCalibrationScales[0] = xScale;
+  magnetometerCalibrationScales[1] = yScale;
+  magnetometerCalibrationScales[2] = zScale;
+}
 
 void MPU9250::getData(MPU9250_Data *data){
     if(timeAtLastRead == 0){
@@ -35,31 +149,39 @@ void MPU9250::getData(MPU9250_Data *data){
     }
     update();
     *data = runningData;
-    data->orientation.x -= xOffset;
-    data->orientation.y -= yOffset;
-    data->orientation.z -= zOffset;
+    data->orientation.x -= orientationOffsets[0];
+    data->orientation.y -= orientationOffsets[1];
+    data->orientation.z -= orientationOffsets[2];
 }
 
+void MPU9250::tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData){
+
+    //tilt compensation
+    float normalizedMagX = scaleData->mag.x*cos((runningData.orientation.x)/180.0*M_PI) + scaleData->mag.y * sin((runningData.orientation.x)/180.0 * M_PI) * sin((runningData.orientation.y)/180.0 * M_PI) + scaleData->mag.z * cos((runningData.orientation.x)/180.0 * M_PI) * sin((runningData.orientation.y)/180.0 * M_PI);
+    float normalizedMagY = scaleData->mag.y*cos((runningData.orientation.y)/180.0*M_PI) - scaleData->mag.z * sin((runningData.orientation.y)/180.0*M_PI);
+    float heading = atan2(normalizedMagY, normalizedMagX) *180.0 / M_PI;
+
+
+    if(heading < 0) heading += 360;
+    else if(heading > 360) heading -= 360;
+    runningData.rawHeading = heading;
+    //Serial.println("gyro z:" + String(scaleData->gyro.z));
+    if(runningData.orientation.z >= 270 && heading < 90.0){
+      runningData.orientation.z = heading;
+    }
+
+    else if(runningData.orientation.z < 90 && heading > 270.0){
+      runningData.orientation.z = heading;
+    }
+    runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*heading;
+}
 
 void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
   xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
   yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
-
   runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
   runningData.orientation.y = (runningData.orientation.y + scaleData->gyro.y)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*yAcc;
-  float heading = atan2(scaleData->mag.y , scaleData->mag.x) *180.0 / M_PI;
-  if(heading < 0) heading += 360;
-  else if(heading > 360) heading -= 360;
-  runningData.rawHeading = heading;
-  //Serial.println("gyro z:" + String(scaleData->gyro.z));
-  if(runningData.orientation.z >= 270 && heading < 90.0){
-    runningData.orientation.z = heading;
-  }
-
-  else if(runningData.orientation.z < 90 && heading > 270.0){
-    runningData.orientation.z = heading;
-  }
-  runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*heading;
+  tiltCompensateMagnetometer(scaleData);
 }
 
 void MPU9250::update(){
@@ -94,16 +216,16 @@ void MPU9250::getScaledData(MPU9250_Scaled_Data *data){
 }
 
 void MPU9250::scaleData(MPU9250_Raw_Data *raw, MPU9250_Scaled_Data *data){
-  data->gyro.x = raw->gyro.x / gyroScale - dX_Offset;
-  data->gyro.y = -1.0*raw->gyro.y / gyroScale - dY_Offset;
-  data->gyro.z = raw->gyro.z / gyroScale - dZ_Offset;
+  data->gyro.x = raw->gyro.x / gyroScale - gyroCalibrationOffsets[0];
+  data->gyro.y = -1.0*raw->gyro.y / gyroScale - gyroCalibrationOffsets[1];
+  data->gyro.z = raw->gyro.z / gyroScale - gyroCalibrationOffsets[2];
   data->accel.x = raw->accel.x / accelScale;
   data->accel.y = raw->accel.y / accelScale;
   data->accel.z = raw->accel.z / accelScale;
   data->temp = scaleTemp(raw->temp);
-  data->mag.x = (raw->mag.x / magScale - magX_Offset) * magX_Scale;
-  data->mag.y = (raw->mag.y / magScale - magY_Offset) * magY_Scale;
-  data->mag.z = (raw->mag.z / magScale - magZ_Offset) * magZ_Scale;
+  data->mag.x = (raw->mag.x / magScale - magnetometerCalibrationOffsets[0]) * magnetometerCalibrationScales[0];
+  data->mag.y = (raw->mag.y / magScale - magnetometerCalibrationOffsets[1]) * magnetometerCalibrationScales[1];
+  data->mag.z = (raw->mag.z / magScale - magnetometerCalibrationOffsets[2]) * magnetometerCalibrationScales[2];
 
 }
 
@@ -170,9 +292,6 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   preRotated.accel.z = (int16_t) (Wire.read() <<8|Wire.read());
   raw->temp = Wire.read() <<8|Wire.read();
   preRotated.gyro.x = (int16_t) (Wire.read()<< 8| Wire.read());
-  //Serial.println("Raw X: " + String(preRotated.gyro.x));
-  //preRotated.gyro.x = (int)(int16_t) preRotated.gyro.x << 8|(int16_t) Wire.read();
-  //Serial.println("Raw X: " + String(preRotated.gyro.x));
   preRotated.gyro.y = (int16_t)(Wire.read() <<8|Wire.read());
   preRotated.gyro.z = (int16_t)(Wire.read() <<8|Wire.read());
   //check if new mag data avialble
@@ -212,28 +331,6 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   }
 }
 
-/*
-void MPU9250::getAllData(MPU9250_Raw_Data *raw){
-  //Serial.println(mpuRead16(MPU9250_ACCEL_XOUT_H));
-  mpuWrite8(MPU9250_ACCEL_XOUT_H);
-  Wire.requestFrom(mpuAddr,14,true);
-  raw->accel.x = Wire.read()<<8|Wire.read();
-  raw->accel.y = Wire.read() <<8|Wire.read();
-  raw->accel.z = Wire.read() <<8|Wire.read();
-  raw->temp = Wire.read() <<8|Wire.read();
-  raw->gyro.x = Wire.read() <<8|Wire.read();
-  raw->gyro.y = Wire.read() <<8|Wire.read();
-  raw->gyro.z = Wire.read() <<8|Wire.read();
-  //check if new mag data avialble
-  if(ak8963Read8(AK8963_STATUS_1) & 0x01){
-    raw->mag.x = ak8963Read16(AK8963_MAG_X_L);
-    raw->mag.y = ak8963Read16(AK8963_MAG_Y_L);
-    raw->mag.z = ak8963Read16(AK8963_MAG_Z_L);
-    ak8963Read8(AK8963_STATUS_2);
-  }
-}
-
-*/
 int MPU9250::begin(){
   Wire.begin();
   if(!checkMPU()){
@@ -257,7 +354,6 @@ int MPU9250::begin(MPU9250_gyro_range gyroRange, MPU9250_accel_range accelRange)
   if(!checkMPU()){
     return -1;
   }
-
   resetDevice();
   setClockSource(MPU9250_CLOCK_SOURCE_X_GYRO);
   delay(100);
@@ -267,7 +363,6 @@ int MPU9250::begin(MPU9250_gyro_range gyroRange, MPU9250_accel_range accelRange)
   if(initAK8963() < 0){
     return -2;
   }
-  //Serial.println(mpuRead8(MPU9250_CONFIG),BIN);
   return 0;
 }
 
