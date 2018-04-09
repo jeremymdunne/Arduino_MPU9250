@@ -103,13 +103,13 @@ void MPU9250::calibrateAccel(){
 
 void MPU9250::zero(){
   MPU9250_Data data;
-  for(int i = 0; i < 5; i ++){
+  for(int i = 0; i < 50; i ++){
     update();
   }
   getData(&data);
   orientationOffsets[0] = data.orientation.x;
-  orientationOffsets[0] = data.orientation.y;
-  orientationOffsets[0] = data.orientation.z;
+  orientationOffsets[1] = data.orientation.y;
+  orientationOffsets[2] = data.orientation.z;
 }
 
 void MPU9250::setGyroCalibrationOffsets(float xOffset, float yOffset, float zOffset){
