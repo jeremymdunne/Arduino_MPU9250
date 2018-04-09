@@ -4,9 +4,8 @@
 MPU9250 imu;
 void setup() {
     // put your setup code here, to run once:
-    delay(3000);
-    Serial.begin(9600);
-    if(imu.begin(MPU9250_GYRO_RANGE_250_DPS, MPU9250_ACCEL_RANGE_8_GPS) < 0){
+    Serial.begin(115200);
+    if(imu.begin(MPU9250_GYRO_RANGE_1000_DPS, MPU9250_ACCEL_RANGE_8_GPS) < 0){
       Serial.println("IMU init Fail!");
       while(true);
     }
