@@ -163,16 +163,33 @@ public:
   void getData(MPU9250_Data *data);
   void zero();
   void getRawData(MPU9250_Raw_Data * data);
+  void calibrateGyroOffsets();
+  void calibrateAccel();
+  void setGyroCalibrationOffsets(float xOffset, float yOffset, float zOffset);
+  void setAccelCalibrationOffsets(float xOffset, float yOffset, float zOffset);
+  void setAccelCalibrationScales(float xScale, float yScale, float zScale);
+  void setMagnetometerCalibrationOffsets(float xOffset, float yOffset, float zOffset);
+  void setMagnetometerCalibrationScales(float xScale, float yScale, float zScale);
+  void getGyroCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset);
+  void getAccelCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset);
+  void getAccelCalibrationScales(float *xScale, float *yScale, float *zScale);
+  void getMagnetometerCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset);
+  void getMagnetometerCalibrationScales(float *xScale, float *yScale, float *zScale);
 
 private:
   MPU9250_orientation mpuOrientation = MPU9250_ORIENTATION_Z_DOWN;
-  float xOffset = 0, yOffset = 0, zOffset = 0;
-  float dX_Offset = 0, dY_Offset = 0, dZ_Offset = 0;
+
   float magX_Offset = -35;
   float magY_Offset = -210;
   float magZ_Offset = -155;
   float magX_Scale = 1.09, magY_Scale = 1.0, magZ_Scale = 1.0;
   long timeAtLastRead = 0;
+  float magnetometerCalibrationOffsets[3] = {0,0,0}; //xyz in mTesla
+  float magnetometerCalibrationScales[3] = {1,1,1}; //xyz in mTesla
+  float accelCalibrationOffsets[3] = {0,0,0}; //xyz in g
+  float accelCalibrationScales[3] = {1,1,1}; //xyz in g
+  float gyroCalibrationOffsets[3] = {0,0,0}; //xyz in deg/sec
+  float orientationOffsets[3] = {0,0,0}; //from the "zero" point
   MPU9250_Raw_Data rawData;
   MPU9250_Raw_Data preRotated;
   MPU9250_Scaled_Data scaledData;
@@ -180,16 +197,17 @@ private:
   float xAcc, yAcc;
   long tempTime;
   int mpuAddr = MPU9250_ADDR_0;
+  float gyroScale = calculateGyroScale(MPU9250_GYRO_RANGE_250_DPS);
+  float accelScale = calculateAccelScale(MPU9250_ACCEL_RANGE_2_GPS);
+  float magScale = calculateMagScale(AK8963_16_BIT);
   void update();
+  void tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData);
   void enableBypass();
   void getAllData(MPU9250_Raw_Data *rawData);
   void applyFilter(MPU9250_Scaled_Data *scaleData);
   void scaleData(MPU9250_Raw_Data *raw, MPU9250_Scaled_Data *scaledData);
   void normalizeGyro(MPU9250_Scaled_Data *data, long deltaMicros);
   float calculateMagScale(int scale);
-  float gyroScale = calculateGyroScale(MPU9250_GYRO_RANGE_250_DPS);
-  float accelScale = calculateAccelScale(MPU9250_ACCEL_RANGE_2_GPS);
-  float magScale = calculateMagScale(AK8963_16_BIT);
   int initAK8963();
   float scaleTemp(int temp);
   bool checkMPU();
