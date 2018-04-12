@@ -4,6 +4,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+#define RADIANS_TO_DEGREES 57.2957
+
+
 #define MPU9250_ADDR_0 0x68
 #define MPU9250_ADDR_1 0x69
 #define MPU9250_SELF_TEST_X 0x0D
@@ -200,6 +203,8 @@ private:
   float gyroScale = calculateGyroScale(MPU9250_GYRO_RANGE_250_DPS);
   float accelScale = calculateAccelScale(MPU9250_ACCEL_RANGE_2_GPS);
   float magScale = calculateMagScale(AK8963_16_BIT);
+  int akValueL, akValueH;
+  int i2cReadValue;
   void update();
   void tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData);
   void enableBypass();

@@ -12,6 +12,7 @@ void setup() {
       Serial.println("IMU init Fail!");
       while(true);
     }
+
     Serial.println("IMU init Success!");
     Serial.println("Calibrating Gyroscope!");
     imu.calibrateGyroOffsets();
@@ -24,12 +25,13 @@ void setup() {
 MPU9250_Data imuData;
 long timeStart = 0;
 void loop() {
-    timeStart = millis();
+    timeStart = micros();
     imu.getData(&imuData);
     //Serial.println("Ax:" + String(imuData.accel.x) + " Ay:"+ String(imuData.accel.y) + " Az:"+ String(imuData.accel.z) + " Gx:" + String(imuData.gyro.x) + " Gy:" + String(imuData.gyro.y) + " Gz:" + String(imuData.gyro.z) + " Temp:" + String(imuData.temp));
-    //Serial.println("Orientation: X:" + String(imuData.orientation.x) + " Y:" + String(imuData.orientation.y) + " Z:" + String(imuData.orientation.z) + " Raw Heading:" + String(imuData.rawHeading));
+    Serial.println(String(micros() - timeStart));
+    Serial.println("Orientation: X:" + String(imuData.orientation.x) + " Y:" + String(imuData.orientation.y) + " Z:" + String(imuData.orientation.z) + " Raw Heading:" + String(imuData.rawHeading));
     //Serial.println("Heading: " + String(imuData.rawHeading) + "Mx:" + String(imuData.mag.x) + " My:" + String(imuData.mag.y) + " Mz:" + String(imuData.mag.z));
-    Serial.println(String(millis() - timeStart));
+
     delay(100);
     // put your main code here, to run repeatedly:
 }

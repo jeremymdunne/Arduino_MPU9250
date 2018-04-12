@@ -154,48 +154,60 @@ void MPU9250::getData(MPU9250_Data *data){
     data->orientation.z -= orientationOffsets[2];
 }
 
+float normalizedMagX,normalizedMagY,headingMT;
+
 void MPU9250::tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData){
 
     //tilt compensation
-    float normalizedMagX = scaleData->mag.x*cos((runningData.orientation.x)/180.0*M_PI) + scaleData->mag.y * sin((runningData.orientation.x)/180.0 * M_PI) * sin((runningData.orientation.y)/180.0 * M_PI) + scaleData->mag.z * cos((runningData.orientation.x)/180.0 * M_PI) * sin((runningData.orientation.y)/180.0 * M_PI);
-    float normalizedMagY = scaleData->mag.y*cos((runningData.orientation.y)/180.0*M_PI) - scaleData->mag.z * sin((runningData.orientation.y)/180.0*M_PI);
-    float heading = atan2(normalizedMagY, normalizedMagX) *180.0 / M_PI;
+    normalizedMagX = scaleData->mag.x*cos((runningData.orientation.x)/RADIANS_TO_DEGREES); // + scaleData->mag.y * sin((runningData.orientation.x)/RADIANS_TO_DEGREES) * sin((runningData.orientation.y)/RADIANS_TO_DEGREES) + scaleData->mag.z * cos((runningData.orientation.x)/RADIANS_TO_DEGREES) * sin((runningData.orientation.y)/RADIANS_TO_DEGREES);
+    normalizedMagY = scaleData->mag.y*cos((runningData.orientation.y)/RADIANS_TO_DEGREES); // - scaleData->mag.z * sin((runningData.orientation.y)/RADIANS_TO_DEGREES);
+    headingMT = atan2(normalizedMagY, normalizedMagX) *RADIANS_TO_DEGREES;
 
 
-    if(heading < 0) heading += 360;
-    else if(heading > 360) heading -= 360;
-    runningData.rawHeading = heading;
+    if(headingMT < 0) headingMT += 360;
+    else if(headingMT > 360) headingMT -= 360;
+    runningData.rawHeading = headingMT;
     //Serial.println("gyro z:" + String(scaleData->gyro.z));
-    if(runningData.orientation.z >= 270 && heading < 90.0){
-      runningData.orientation.z = heading;
+    if(runningData.orientation.z >= 270 && headingMT < 90.0){
+      runningData.orientation.z = headingMT;
     }
 
-    else if(runningData.orientation.z < 90 && heading > 270.0){
-      runningData.orientation.z = heading;
+    else if(runningData.orientation.z < 90 && headingMT > 270.0){
+      runningData.orientation.z = headingMT;
     }
-    runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*heading;
+    runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*headingMT;
 }
 
 void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
+  //long arctanTime = micros();
   xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
   yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
+  //Serial.println("ArcTan Time: " + String((micros() - arctanTime)));
+  //long xyFilterTime = micros();
   runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
   runningData.orientation.y = (runningData.orientation.y + scaleData->gyro.y)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*yAcc;
+  //Serial.println("XY Filter Time: " + String((micros() - xyFilterTime)));
   tiltCompensateMagnetometer(scaleData);
 }
 
 void MPU9250::update(){
   tempTime = micros();
   getAllData(&rawData);
+  //long processTime = micros();
   scaleData(&rawData,&scaledData);
   normalizeGyro(&scaledData, tempTime - timeAtLastRead);
+  //Serial.println("Process Time: " + String((micros() - processTime)));
+  //long applicationTime = micros();
   runningData.accel = scaledData.accel;
   runningData.temp = scaledData.temp;
   runningData.gyro.x += scaledData.gyro.x;
   runningData.gyro.y += scaledData.gyro.y;
   runningData.gyro.z += scaledData.gyro.z;
   runningData.mag = scaledData.mag;
+  //Serial.println("Application Time: " + String((micros() - applicationTime)));
+  //long filterTime = micros();
   applyFilter(&scaledData);
+  //Serial.println("Filter Time: " + String((micros() - filterTime)));
   timeAtLastRead = tempTime;
 }
 
@@ -281,6 +293,7 @@ float MPU9250::calculateGyroScale(int scale){
 
 void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   //Serial.println(mpuRead16(MPU9250_ACCEL_XOUT_H));
+  //long readStart = micros();
   mpuWrite8(MPU9250_ACCEL_XOUT_H);
   #ifdef STM32_SERIES_F1
     Wire.requestFrom(mpuAddr,14);
@@ -294,6 +307,7 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   preRotated.gyro.x = (int16_t) (Wire.read()<< 8| Wire.read());
   preRotated.gyro.y = (int16_t)(Wire.read() <<8|Wire.read());
   preRotated.gyro.z = (int16_t)(Wire.read() <<8|Wire.read());
+  //Serial.println("Read time: " + String((micros() - readStart)));
   //check if new mag data avialble
   if(ak8963Read8(AK8963_STATUS_1) & 0x01){
     preRotated.mag.x = ak8963Read16(AK8963_MAG_X_L);
@@ -351,6 +365,7 @@ int MPU9250::begin(){
 
 int MPU9250::begin(MPU9250_gyro_range gyroRange, MPU9250_accel_range accelRange){
   Wire.begin();
+  Wire.setClock(400000);
   if(!checkMPU()){
     return -1;
   }
@@ -368,10 +383,10 @@ int MPU9250::begin(MPU9250_gyro_range gyroRange, MPU9250_accel_range accelRange)
 
 
 void MPU9250::enableBypass(){
-  int value = mpuRead8(MPU9250_INT_PIN_CFG);
-  value &= 0b11111101;
-  value |= 1 << 1;
-  mpuWrite8(MPU9250_INT_PIN_CFG,value);
+  i2cReadValue = mpuRead8(MPU9250_INT_PIN_CFG);
+  i2cReadValue &= 0b11111101;
+  i2cReadValue |= 1 << 1;
+  mpuWrite8(MPU9250_INT_PIN_CFG,i2cReadValue);
 }
 
 int MPU9250::initAK8963(){
@@ -399,35 +414,35 @@ void MPU9250::setClockSource(MPU9250_clock_source source){
 }
 
 void MPU9250::setAccelRange(MPU9250_accel_range range){
-    int value = mpuRead8(MPU9250_ACCEL_CONFIG);
+    i2cReadValue = mpuRead8(MPU9250_ACCEL_CONFIG);
     //mpuWrite8(MPU9250_ACCEL_CONFIG, value &=0b00011111);
     //mpuWrite8(MPU9250_ACCEL_CONFIG, value &=0b11100111);
-    value &= 0b11100111;
-    value |= range << 3;
+    i2cReadValue &= 0b11100111;
+    i2cReadValue |= range << 3;
     //Serial.println(value|(range  << 3),BIN);
-    mpuWrite8(MPU9250_ACCEL_CONFIG, value);
+    mpuWrite8(MPU9250_ACCEL_CONFIG, i2cReadValue);
     accelScale = calculateAccelScale(range);
 }
 
 void MPU9250::setGyroRange(MPU9250_gyro_range range){
-  int value = mpuRead8(MPU9250_GYRO_CONFIG);
-  value &= 0b11100111;
-  value |= range << 3;
-  mpuWrite8(MPU9250_GYRO_CONFIG,value);
+  i2cReadValue = mpuRead8(MPU9250_GYRO_CONFIG);
+  i2cReadValue &= 0b11100111;
+  i2cReadValue |= range << 3;
+  mpuWrite8(MPU9250_GYRO_CONFIG,i2cReadValue);
   gyroScale = calculateGyroScale(range);
 }
 
 
 
 void MPU9250::resetDevice(){
-  int value = mpuRead8(MPU9250_PWR_MGMT_1);
+  i2cReadValue = mpuRead8(MPU9250_PWR_MGMT_1);
   //Serial.println(value, BIN);
-  value &= 0b01111111;
-  value |= 1 << 7;
-  mpuWrite8(MPU9250_PWR_MGMT_1,value);
+  i2cReadValue &= 0b01111111;
+  i2cReadValue |= 1 << 7;
+  mpuWrite8(MPU9250_PWR_MGMT_1,i2cReadValue);
   delay(10);
   while(mpuRead8(MPU9250_PWR_MGMT_1) >> 7 != 0) delay(10);
-  value = mpuRead8(MPU9250_PWR_MGMT_1);
+  i2cReadValue = mpuRead8(MPU9250_PWR_MGMT_1);
   //Serial.println(value, BIN);
 }
 
@@ -482,15 +497,15 @@ int MPU9250::ak8963Read8(int reg){
   }
   return -1;
 }
-
+int akValueL, akValueH;
 int MPU9250::ak8963Read16(int reg){
-  int16_t valueL,valueH;
+  //int16_t valueL,valueH;
   ak8963Write8(reg);
   Wire.requestFrom(AK8963_ADDR,2);
   if(Wire.available() >= 2){
-    valueL = Wire.read();
-    valueH = Wire.read();
-    return (int)(int16_t)(valueH << 8 | valueL);
+    akValueL = Wire.read();
+    akValueH = Wire.read();
+    return (int)(int16_t)(akValueH << 8 | akValueL);
   }
   return -1;
 }
