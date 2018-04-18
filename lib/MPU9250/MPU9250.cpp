@@ -1,6 +1,8 @@
 #include "MPU9250.h"
 
 
+
+
 void MPU9250::getRawData(MPU9250_Raw_Data * data){
   getAllData(data);
 }
@@ -47,16 +49,15 @@ void MPU9250::calibrateGyroOffsets(){
   }
   getData(&startData);
   long startMillis = millis();
-  for(int i = 0; i < 20; i ++){
-    update();
-    delay(5);
-  }
+  delay(100);
   getData(&endData);
   long endMillis = millis();
   gyroCalibrationOffsets[0] = (endData.gyro.x - startData.gyro.x)/((endMillis - startMillis)/1000.0);
   gyroCalibrationOffsets[1] = (endData.gyro.y - startData.gyro.y)/((endMillis - startMillis)/1000.0);
   gyroCalibrationOffsets[2] = (endData.gyro.z - startData.gyro.z)/((endMillis - startMillis)/1000.0);
 }
+
+
 
 void MPU9250::calibrateAccel(){
   for(int i = 0; i < 3; i ++){
@@ -101,6 +102,44 @@ void MPU9250::calibrateAccel(){
   }
 }
 
+void MPU9250::calibrateMagnetometer(){
+  for(int i = 0; i < 3; i ++){
+    magnetometerCalibrationOffsets[i] = 0;
+    magnetometerCalibrationScales[i] = 1.0;
+  }
+
+  float maxX,maxY,maxZ;
+  float minX,minY,minZ;
+  MPU9250_Data mpuData;
+  getData(&mpuData);
+  maxX = mpuData.mag.x;
+  maxY = mpuData.mag.y;
+  maxZ = mpuData.mag.z;
+  minX = mpuData.mag.x;
+  minY = mpuData.mag.y;
+  minZ = mpuData.mag.z;
+  float offsetX = 0,offsetY = 0,offsetZ = 0;
+  float scaleX = 1, scaleY = 1, scaleZ = 1;
+  Vector3f correctedOutput;
+  float maxValue;
+  while(true){
+    getData(&mpuData);
+    if(mpuData.mag.x > maxX) maxX = mpuData.mag.x;
+    if(mpuData.mag.y > maxY) maxY = mpuData.mag.y;
+    if(mpuData.mag.z > maxZ) maxZ = mpuData.mag.z;
+    if(mpuData.mag.x < minX) minX = mpuData.mag.x;
+    if(mpuData.mag.y < minY) minY = mpuData.mag.y;
+    if(mpuData.mag.z < minZ) minZ = mpuData.mag.z;
+    offsetX = (minX + maxX)/2.0;
+    offsetY =(minY + maxY)/2.0;
+    offsetZ = (minZ + maxZ)/2.0;
+    //scale to the max value
+    Serial.println("Mag: X:" + String(mpuData.mag.x) + " Y:" + String(mpuData.mag.y) + " Z:" + String(mpuData.mag.z));
+    Serial.println("Offsets: X:" + String(offsetX) + " Y:" + String(offsetY) + " Z:" + String(offsetZ));
+    delay(15);
+  }
+}
+
 void MPU9250::zero(){
   MPU9250_Data data;
   for(int i = 0; i < 50; i ++){
@@ -109,7 +148,7 @@ void MPU9250::zero(){
   getData(&data);
   orientationOffsets[0] = data.orientation.x;
   orientationOffsets[1] = data.orientation.y;
-  orientationOffsets[2] = data.orientation.z;
+  //orientationOffsets[2] = data.orientation.z;
 }
 
 void MPU9250::setGyroCalibrationOffsets(float xOffset, float yOffset, float zOffset){
@@ -305,8 +344,8 @@ void MPU9250::getAllData(MPU9250_Raw_Data *raw){
   preRotated.accel.z = (int16_t) (Wire.read() <<8|Wire.read());
   raw->temp = Wire.read() <<8|Wire.read();
   preRotated.gyro.x = (int16_t) (Wire.read()<< 8| Wire.read());
-  preRotated.gyro.y = (int16_t)(Wire.read() <<8|Wire.read());
-  preRotated.gyro.z = (int16_t)(Wire.read() <<8|Wire.read());
+  preRotated.gyro.y = (int16_t) (Wire.read() <<8|Wire.read());
+  preRotated.gyro.z = (int16_t) (Wire.read() <<8|Wire.read());
   //Serial.println("Read time: " + String((micros() - readStart)));
   //check if new mag data avialble
   if(ak8963Read8(AK8963_STATUS_1) & 0x01){

@@ -178,6 +178,7 @@ public:
   void getAccelCalibrationScales(float *xScale, float *yScale, float *zScale);
   void getMagnetometerCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset);
   void getMagnetometerCalibrationScales(float *xScale, float *yScale, float *zScale);
+  void calibrateMagnetometer();
 
 private:
   MPU9250_orientation mpuOrientation = MPU9250_ORIENTATION_Z_DOWN;
