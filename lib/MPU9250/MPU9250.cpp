@@ -218,35 +218,37 @@ void MPU9250::tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData){
 }
 
 void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
-  //long arctanTime = micros();
   xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
   yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
-  //Serial.println("ArcTan Time: " + String((micros() - arctanTime)));
-  //long xyFilterTime = micros();
   runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
   runningData.orientation.y = (runningData.orientation.y + scaleData->gyro.y)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*yAcc;
-  //Serial.println("XY Filter Time: " + String((micros() - xyFilterTime)));
-  tiltCompensateMagnetometer(scaleData);
+  normalizedMagX = scaleData->mag.x*cos((runningData.orientation.x)/RADIANS_TO_DEGREES);
+  normalizedMagY = scaleData->mag.y*cos((runningData.orientation.y)/RADIANS_TO_DEGREES);
+  headingMT = atan2(normalizedMagY, normalizedMagX) *RADIANS_TO_DEGREES;
+  if(headingMT < 0) headingMT += 360;
+  else if(headingMT > 360) headingMT -= 360;
+  runningData.rawHeading = headingMT;
+  if(runningData.orientation.z >= 270 && headingMT < 90.0){
+    runningData.orientation.z = headingMT;
+  }
+  else if(runningData.orientation.z < 90 && headingMT > 270.0){
+    runningData.orientation.z = headingMT;
+  }
+  runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*headingMT;
 }
 
 void MPU9250::update(){
   tempTime = micros();
   getAllData(&rawData);
-  //long processTime = micros();
   scaleData(&rawData,&scaledData);
   normalizeGyro(&scaledData, tempTime - timeAtLastRead);
-  //Serial.println("Process Time: " + String((micros() - processTime)));
-  //long applicationTime = micros();
   runningData.accel = scaledData.accel;
   runningData.temp = scaledData.temp;
   runningData.gyro.x += scaledData.gyro.x;
   runningData.gyro.y += scaledData.gyro.y;
   runningData.gyro.z += scaledData.gyro.z;
   runningData.mag = scaledData.mag;
-  //Serial.println("Application Time: " + String((micros() - applicationTime)));
-  //long filterTime = micros();
   applyFilter(&scaledData);
-  //Serial.println("Filter Time: " + String((micros() - filterTime)));
   timeAtLastRead = tempTime;
 }
 
