@@ -146,6 +146,8 @@ struct MPU9250_Data{
   Vector3f gyro, accel, mag, orientation;
   float rawHeading;
   float temp;
+  float linearAcceleration; 
+  MPU9250_DATA_FUSE_MODE dataFuseMode; 
 };
 
 
