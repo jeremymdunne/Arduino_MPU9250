@@ -121,7 +121,7 @@ void MPU9250::calibrateMagnetometer(){
   float offsetX = 0,offsetY = 0,offsetZ = 0;
   float scaleX = 1, scaleY = 1, scaleZ = 1;
   Vector3f correctedOutput;
-  float maxValue;
+  //float maxValue;
   while(true){
     getData(&mpuData);
     if(mpuData.mag.x > maxX) maxX = mpuData.mag.x;
@@ -133,9 +133,13 @@ void MPU9250::calibrateMagnetometer(){
     offsetX = (minX + maxX)/2.0;
     offsetY =(minY + maxY)/2.0;
     offsetZ = (minZ + maxZ)/2.0;
+    scaleX = maxX - minX;
+    scaleY = (maxY - minY)/scaleX;
+    scaleZ = (maxZ - minZ)/scaleX;
     //scale to the max value
     Serial.println("Mag: X:" + String(mpuData.mag.x) + " Y:" + String(mpuData.mag.y) + " Z:" + String(mpuData.mag.z));
     Serial.println("Offsets: X:" + String(offsetX) + " Y:" + String(offsetY) + " Z:" + String(offsetZ));
+    Serial.println("Scale: X:" + String(scaleX) + " Y:" + String(scaleY) + " Z:" + String(scaleZ));
     delay(15);
   }
 }

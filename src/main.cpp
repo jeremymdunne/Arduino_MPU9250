@@ -20,8 +20,8 @@ void setup() {
     imu.getGyroCalibrationOffsets(&xOffset, &yOffset, &zOffset);
     Serial.println("Gyro Offsets: X:" + String(xOffset) + " Y:" + String(yOffset) + " Z:" + String(zOffset));
     imu.zero();
-    imu.setMagnetometerCalibrationOffsets(-48.69, 28.68, -142);
-    imu.setMagnetometerCalibrationScales(1.0, 110/100.0, 1.0);
+    imu.setMagnetometerCalibrationOffsets(-36.35, 71.70, -169.07);
+    imu.setMagnetometerCalibrationScales(1.0, 1.1, 1.15);
     //imu.calibrateMagnetometer();
 
 }
