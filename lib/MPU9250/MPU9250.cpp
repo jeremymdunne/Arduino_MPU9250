@@ -224,8 +224,10 @@ void MPU9250::tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData){
 }
 
 void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
+  runningData.linearAcceleration = sqrt(pow(accel.x,2) + pow(accel.y,2) + pow(accel.z,2)); 
   switch(dataFuseMode){
    case(MPU9250_DATA_FUSE_9_DOF):
+      runningData.dataFuseMode = MPU9250_DATA_FUSE_9_DOF; 
       xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
       yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
       runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
@@ -245,9 +247,9 @@ void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
       runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*headingMT;
       break; 
    case(MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL):
+      runningData.dataFuseMode = MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL;
       //if the linear acceleration is > ~1, we cannot use the accelerometer for orientation data 
-      float linearAcceleration = sqrt(pow(accel.x,2) + pow(accel.y,2) + pow(accel.z,2)); 
-      if(linearAcceleration > 1.2){
+      if(runningData.linearAcceleration > 1.2){
         runningData.orientation.x += scaleData->gyro.x; 
         runningData.orientation.y += scaleData->gyro.y; 
       }
