@@ -20,8 +20,9 @@ void setup() {
     imu.getGyroCalibrationOffsets(&xOffset, &yOffset, &zOffset);
     Serial.println("Gyro Offsets: X:" + String(xOffset) + " Y:" + String(yOffset) + " Z:" + String(zOffset));
     imu.zero();
-    imu.setMagnetometerCalibrationOffsets(-36.35, 71.70, -169.07);
-    imu.setMagnetometerCalibrationScales(1.0, 1.1, 1.15);
+    imu.setMagnetometerCalibrationOffsets(-36.35, 40.36, -140.07);
+    imu.setMagnetometerCalibrationScales(1.0, 1.03, .92);
+    imu.setDataFuseMode(MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL);
     //imu.calibrateMagnetometer();
 
 }
@@ -39,6 +40,18 @@ void loop() {
     //Serial.println("Heading: " + String(imuData.rawHeading) + "Mx:" + String(imuData.mag.x) + " My:" + String(imuData.mag.y) + " Mz:" + String(imuData.mag.z));
     Serial.println("@{X:" + String(imuData.orientation.x) + ";Y:" + String(imuData.orientation.y) + ";Z:" + String(imuData.orientation.z) + "}@");
     Serial.println("Linear Acceleration: " + String(imuData.linearAcceleration));
+    Serial.print("DATA FUSE MODE: ");
+    switch(imuData.dataFuseMode){
+      case MPU9250_DATA_FUSE_FULL_9_DOF:
+        Serial.println("9_DOF");
+        break;
+      case MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL:
+        Serial.println("GYRO MAG AUTO ACCEL");
+        break;
+      case MPU9250_DATA_FUSE_GYRO_MAG_AUTO_NO_ACCEL:
+        Serial.println("GYRO MAG AUTO NO ACCEL");
+        break;
+    }
     delay(50);
     // put your main code here, to run repeatedly:
 }
