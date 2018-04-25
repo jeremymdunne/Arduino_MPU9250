@@ -123,6 +123,12 @@ struct Vector3i{
   int z = 0;
 };
 
+enum MPU9250_DATA_FUSE_MODE{
+  MPU9250_DATA_FUSE_FULL_9_DOF,
+  MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL,
+  MPU9250_DATA_FUSE_GYRO_MAG_AUTO_NO_ACCEL
+};
+
 struct MPU9250_Raw_Data{
   Vector3i gyro, accel, mag;
   int temp;
@@ -137,6 +143,8 @@ struct MPU9250_Data{
   Vector3f gyro, accel, mag, orientation;
   float rawHeading;
   float temp;
+  float linearAcceleration;
+  MPU9250_DATA_FUSE_MODE dataFuseMode;
 };
 
 
@@ -179,10 +187,11 @@ public:
   void getMagnetometerCalibrationOffsets(float *xOffset, float *yOffset, float *zOffset);
   void getMagnetometerCalibrationScales(float *xScale, float *yScale, float *zScale);
   void calibrateMagnetometer();
+  void setDataFuseMode(MPU9250_DATA_FUSE_MODE mode);
 
 private:
   MPU9250_orientation mpuOrientation = MPU9250_ORIENTATION_Z_DOWN;
-
+  MPU9250_DATA_FUSE_MODE dataFuseMode = MPU9250_DATA_FUSE_FULL_9_DOF;
   float magX_Offset = -35;
   float magY_Offset = -210;
   float magZ_Offset = -155;
@@ -198,6 +207,7 @@ private:
   MPU9250_Raw_Data preRotated;
   MPU9250_Scaled_Data scaledData;
   MPU9250_Data runningData;
+
   float xAcc, yAcc;
   long tempTime;
   int mpuAddr = MPU9250_ADDR_0;
