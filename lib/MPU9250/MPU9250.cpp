@@ -224,10 +224,10 @@ void MPU9250::tiltCompensateMagnetometer(MPU9250_Scaled_Data *scaleData){
 }
 
 void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
-  runningData.linearAcceleration = sqrt(pow(accel.x,2) + pow(accel.y,2) + pow(accel.z,2)); 
+  runningData.linearAcceleration = sqrt(pow(scaleData->accel.x,2) + pow(scaleData->accel.y,2) + pow(scaleData->accel.z,2));
   switch(dataFuseMode){
-   case(MPU9250_DATA_FUSE_9_DOF):
-      runningData.dataFuseMode = MPU9250_DATA_FUSE_9_DOF; 
+   case(MPU9250_DATA_FUSE_FULL_9_DOF):
+      runningData.dataFuseMode = MPU9250_DATA_FUSE_FULL_9_DOF;
       xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
       yAcc = atan2f(scaleData->accel.x, scaleData->accel.z) * 180.0/M_PI;
       runningData.orientation.x = (runningData.orientation.x + scaleData->gyro.x)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*xAcc;
@@ -245,13 +245,13 @@ void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
         runningData.orientation.z = headingMT;
       }
       runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*headingMT;
-      break; 
+      break;
    case(MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL):
       runningData.dataFuseMode = MPU9250_DATA_FUSE_GYRO_MAG_AUTO_ACCEL;
-      //if the linear acceleration is > ~1, we cannot use the accelerometer for orientation data 
+      //if the linear acceleration is > ~1, we cannot use the accelerometer for orientation data
       if(runningData.linearAcceleration > 1.2){
-        runningData.orientation.x += scaleData->gyro.x; 
-        runningData.orientation.y += scaleData->gyro.y; 
+        runningData.orientation.x += scaleData->gyro.x;
+        runningData.orientation.y += scaleData->gyro.y;
       }
       else{
         xAcc = atan2f(scaleData->accel.y, scaleData->accel.z) *180.0/M_PI;
@@ -272,9 +272,9 @@ void MPU9250::applyFilter(MPU9250_Scaled_Data *scaleData){
         runningData.orientation.z = headingMT;
       }
       runningData.orientation.z = (runningData.orientation.z + scaleData->gyro.z)*COMPLEMENTARY_FILTER_KP + (1.0 - COMPLEMENTARY_FILTER_KP)*headingMT;
-      break; 
+      break;
   }
-  
+
 }
 
 void MPU9250::update(){

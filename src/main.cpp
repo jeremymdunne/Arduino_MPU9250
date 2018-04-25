@@ -38,6 +38,7 @@ void loop() {
     //Serial.println("Gyro Z: " + String(imuData.gyro.z));
     //Serial.println("Heading: " + String(imuData.rawHeading) + "Mx:" + String(imuData.mag.x) + " My:" + String(imuData.mag.y) + " Mz:" + String(imuData.mag.z));
     Serial.println("@{X:" + String(imuData.orientation.x) + ";Y:" + String(imuData.orientation.y) + ";Z:" + String(imuData.orientation.z) + "}@");
+    Serial.println("Linear Acceleration: " + String(imuData.linearAcceleration));
     delay(50);
     // put your main code here, to run repeatedly:
 }
